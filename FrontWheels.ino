@@ -1,3 +1,5 @@
+#include <Wire.h>
+
 // Motor A connections
 int enable_A = 5;   // Channel 1 and 2 enable: Arduino pin 23, D5/PWM
 int input_1 = 3;    // Channel 1 input: Arduino pin 21, D3/GPIO
@@ -29,6 +31,9 @@ void setup() {
   digitalWrite(input_4, LOW);
   // Turn on Yellow indicator LED to show that code is running
   digitalWrite(LED_BUILTIN, HIGH);
+
+  //i2c connection
+  Wire.begin(); // join i2c bus (address optional for writer)
 }
 
 void loop() {
@@ -71,6 +76,19 @@ void loop() {
   driveMotor(enable_A, input_1, input_2, frontLeft);
   driveMotor(enable_B, input_3, input_4, frontRight);
   
+  // Offset negative speeds by +255 to make them 0-510 (easier to send as 2-byte unsigned numbers)
+  unsigned int blPacked = backLeft + 255;
+  unsigned int brPacked = backRight + 255;
+
+  // Send back wheel data over I2C to address 8
+  Wire.beginTransmission(8);
+  Wire.write((blPacked >> 8) & 0xFF); // Back Left High Byte
+  Wire.write(blPacked & 0xFF);        // Back Left Low Byte
+  Wire.write((brPacked >> 8) & 0xFF); // Back Right High Byte
+  Wire.write(brPacked & 0xFF);        // Back Right Low Byte
+  Wire.endTransmission();
+
+  delay(15); // Short pause to keep the I2C bus clear
 }
 
 void driveMotor(int enPin, int inPin1, int inPin2, int speed)

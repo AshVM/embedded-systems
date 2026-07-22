@@ -1,0 +1,184 @@
+// ==========================================
+// FRONT MOTOR DRIVER PINS (Top L293D)
+// ==========================================
+int front_enA = 5;  // Front Left PWM (Speed)
+int front_in1 = 3;  // Front Left Direction A
+int front_in2 = 4;  // Front Left Direction B
+
+int front_enB = 6;  // Front Right PWM (Speed)
+int front_in3 = 7;  // Front Right Direction A
+int front_in4 = 8;  // Front Right Direction B
+
+// ==========================================
+// BACK MOTOR DRIVER PINS (Bottom L293D)
+// ==========================================
+int back_enA = 9;   // Back Left PWM (Speed)
+int back_in1 = A0;  // Back Left Direction A
+int back_in2 = A1;  // Back Left Direction B
+
+int back_enB = 10;  // Back Right PWM (Speed)
+int back_in3 = A2;  // Back Right Direction A
+int back_in4 = A3;  // Back Right Direction B
+
+void setup() {
+  // Set all Front Driver pins to output
+  pinMode(front_enA, OUTPUT); pinMode(front_in1, OUTPUT); pinMode(front_in2, OUTPUT);
+  pinMode(front_enB, OUTPUT); pinMode(front_in3, OUTPUT); pinMode(front_in4, OUTPUT);
+
+  // Set all Back Driver pins to output
+  pinMode(back_enA, OUTPUT); pinMode(back_in1, OUTPUT); pinMode(back_in2, OUTPUT);
+  pinMode(back_enB, OUTPUT); pinMode(back_in3, OUTPUT); pinMode(back_in4, OUTPUT);
+
+  pinMode(LED_BUILTIN, OUTPUT);
+  
+  // Ensure everything is stopped at startup
+  stopMotors();
+  
+  // Turn on indicator LED to show that code is running
+  digitalWrite(LED_BUILTIN, HIGH); 
+}
+
+void loop() {
+  int moveTime = 2000;  // Milliseconds to hold max speed
+  int pauseTime = 1000; // Milliseconds to pause between movements
+
+  // 1. Basic Forward / Backward
+  moveForward(moveTime);
+  delay(pauseTime);
+  
+  moveBackward(moveTime);
+  delay(pauseTime);
+  
+  // 2. Strafing (Sideways Left / Right)
+  strafeLeft(moveTime);
+  delay(pauseTime);
+  
+  strafeRight(moveTime);
+  delay(pauseTime);
+  
+  // 3. Diagonal Movements
+  moveDiagonalForwardRight(moveTime);
+  delay(pauseTime);
+  
+  moveDiagonalForwardLeft(moveTime);
+  delay(pauseTime);
+  
+  moveDiagonalBackwardRight(moveTime);
+  delay(pauseTime);
+  
+  moveDiagonalBackwardLeft(moveTime);
+  delay(pauseTime);
+}
+
+// ==========================================
+// MOVEMENT FUNCTIONS
+// ==========================================
+
+void moveForward(unsigned long inputTime) {
+  // setDirections(FrontLeft, FrontRight, BackLeft, BackRight)
+  setDirections(1, 1, 1, 1);
+  executeMovement(inputTime);
+}
+
+void moveBackward(unsigned long inputTime) {
+  setDirections(-1, -1, -1, -1);
+  executeMovement(inputTime);
+}
+
+void strafeRight(unsigned long inputTime) {
+  // Front Left & Back Right go FORWARD. Front Right & Back Left go BACKWARD.
+  setDirections(1, -1, -1, 1);
+  executeMovement(inputTime);
+}
+
+void strafeLeft(unsigned long inputTime) {
+  // Front Left & Back Right go BACKWARD. Front Right & Back Left go FORWARD.
+  setDirections(-1, 1, 1, -1);
+  executeMovement(inputTime);
+}
+
+void moveDiagonalForwardRight(unsigned long inputTime) {
+  // Front-Left and Back-Right move forward. The other two stop (0).
+  setDirections(1, 0, 0, 1);
+  executeMovement(inputTime);
+}
+
+void moveDiagonalForwardLeft(unsigned long inputTime) {
+  // Front-Right and Back-Left move forward. The other two stop (0).
+  setDirections(0, 1, 1, 0);
+  executeMovement(inputTime);
+}
+
+void moveDiagonalBackwardRight(unsigned long inputTime) {
+  // Front-Right and Back-Left move backward. The other two stop (0).
+  setDirections(0, -1, -1, 0);
+  executeMovement(inputTime);
+}
+
+void moveDiagonalBackwardLeft(unsigned long inputTime) {
+  // Front-Left and Back-Right move backward. The other two stop (0).
+  setDirections(-1, 0, 0, -1);
+  executeMovement(inputTime);
+}
+
+// ==========================================
+// CORE LOGIC & HELPER FUNCTIONS
+// ==========================================
+
+// Handles acceleration/deceleration logic for all 4 wheels
+void executeMovement(unsigned long inputTime) {
+  // Accelerate from half speed to max
+  for (int i = 127; i <= 255; i++) {
+    setSpeed(i);
+    delay(4);
+  }
+
+  // Hold max speed for the user-specified duration
+  setSpeed(255);
+  delay(inputTime);
+
+  // Decelerate from max speed back down
+  for (int i = 255; i >= 127; i--) {
+    setSpeed(i);
+    delay(4);
+  }
+
+  // Turn off motors at the end of the movement
+  stopMotors();
+}
+
+// Applies the PWM speed to all 4 enable pins
+void setSpeed(int speed) {
+  analogWrite(front_enA, speed);
+  analogWrite(front_enB, speed);
+  analogWrite(back_enA, speed);
+  analogWrite(back_enB, speed);
+}
+
+// Configures the IN pins based on desired direction (1=Forward, -1=Backward, 0=Stop)
+void setDirections(int fl, int fr, int bl, int br) {
+  // Front Left
+  digitalWrite(front_in1, fl == 1 ? HIGH : LOW);
+  digitalWrite(front_in2, fl == -1 ? HIGH : LOW);
+  
+  // Front Right
+  digitalWrite(front_in3, fr == 1 ? HIGH : LOW);
+  digitalWrite(front_in4, fr == -1 ? HIGH : LOW);
+  
+  // Back Left
+  digitalWrite(back_in1, bl == 1 ? HIGH : LOW);
+  digitalWrite(back_in2, bl == -1 ? HIGH : LOW);
+  
+  // Back Right
+  digitalWrite(back_in3, br == 1 ? HIGH : LOW);
+  digitalWrite(back_in4, br == -1 ? HIGH : LOW);
+}
+
+// Immediately cuts power to all IN pins and sets speed to 0
+void stopMotors() {
+  digitalWrite(front_in1, LOW); digitalWrite(front_in2, LOW);
+  digitalWrite(front_in3, LOW); digitalWrite(front_in4, LOW);
+  digitalWrite(back_in1, LOW);  digitalWrite(back_in2, LOW);
+  digitalWrite(back_in3, LOW);  digitalWrite(back_in4, LOW);
+  setSpeed(0);
+}

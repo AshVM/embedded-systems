@@ -1,0 +1,134 @@
+// ==========================================
+// FRONT MOTOR DRIVER PINS (Top L293D)
+// ==========================================
+int front_enA = 5;  // Front Left PWM (Speed)
+int front_in1 = 3;  // Front Left Direction A
+int front_in2 = 4;  // Front Left Direction B
+
+int front_enB = 6;  // Front Right PWM (Speed)
+int front_in3 = 7;  // Front Right Direction A
+int front_in4 = 8;  // Front Right Direction B
+
+// ==========================================
+// BACK MOTOR DRIVER PINS (Bottom L293D)
+// ==========================================
+int back_enA = 9;   // Back Left PWM (Speed)
+int back_in1 = A0;  // Back Left Direction A
+int back_in2 = A1;  // Back Left Direction B
+
+int back_enB = 10;  // Back Right PWM (Speed)
+int back_in3 = A2;  // Back Right Direction A
+int back_in4 = A3;  // Back Right Direction B
+
+int currentSpeed = 255; // Default max speed
+
+// Hold-to-move timer variables
+unsigned long lastCommandTime = 0;
+const unsigned long commandTimeout = 300; // Time in ms before stopping if key is released
+char activeCommand = 'S';
+
+void setup() {
+  Serial.begin(9600);
+
+  // Set all motor driver pins to output
+  pinMode(front_enA, OUTPUT); pinMode(front_in1, OUTPUT); pinMode(front_in2, OUTPUT);
+  pinMode(front_enB, OUTPUT); pinMode(front_in3, OUTPUT); pinMode(front_in4, OUTPUT);
+
+  pinMode(back_enA, OUTPUT); pinMode(back_in1, OUTPUT); pinMode(back_in2, OUTPUT);
+  pinMode(back_enB, OUTPUT); pinMode(back_in3, OUTPUT); pinMode(back_in4, OUTPUT);
+
+  pinMode(LED_BUILTIN, OUTPUT);
+  
+  stopMotors();
+  digitalWrite(LED_BUILTIN, HIGH); 
+
+  Serial.println("--- Hold-to-Move Mecanum Control Ready ---");
+  Serial.println("Hold W,A,S,D,Q, or E to move. Release to stop.");
+}
+
+void loop() {
+  // Check for incoming characters continuously
+  if (Serial.available() > 0) {
+    char command = Serial.read();
+    
+    if (command != '\n' && command != '\r') {
+      activeCommand = command;
+      lastCommandTime = millis(); // Refresh the safety clock
+      runCommand(activeCommand);
+    }
+  }
+
+  // Safety feature: If no serial data is received within the timeout window, stop motors
+  if (millis() - lastCommandTime > commandTimeout) {
+    if (activeCommand != 'S') {
+      stopMotors();
+      activeCommand = 'S'; // Reset state to stopped
+    }
+  }
+}
+
+void runCommand(char cmd) {
+  switch(cmd) {
+    case 'W': case 'w': moveForward(); break;
+    case 'S': case 's': moveBackward(); break;
+    case 'D': case 'd': strafeLeft(); break;
+    case 'A': case 'a': strafeRight(); break;
+    case 'E': case 'e': rotateClockwise(); break;
+    case 'Q': case 'q': rotateCounterClockwise(); break;
+    case 'X': case 'x': stopMotors(); break;
+    default: break;
+  }
+}
+
+void moveForward() {
+  setDirections(1, 1, 1, 1);
+  setSpeed(currentSpeed);
+}
+
+void moveBackward() {
+  setDirections(-1, -1, -1, -1);
+  setSpeed(currentSpeed);
+}
+
+void strafeLeft() {
+  setDirections(-1, 1, 1, -1);
+  setSpeed(currentSpeed);
+}
+
+void strafeRight() {
+  setDirections(1, -1, -1, 1);
+  setSpeed(currentSpeed);
+}
+
+void rotateClockwise() {
+  setDirections(1, -1, 1, -1);
+  setSpeed(currentSpeed);
+}
+
+void rotateCounterClockwise() {
+  setDirections(-1, 1, -1, 1);
+  setSpeed(currentSpeed);
+}
+
+void setSpeed(int speed) {
+  analogWrite(front_enA, speed);
+  analogWrite(front_enB, speed);
+  analogWrite(back_enA, speed);
+  analogWrite(back_enB, speed);
+}
+
+void setDirections(int fl, int fr, int bl, int br) {
+  digitalWrite(front_in1, fl == 1 ? HIGH : LOW);
+  digitalWrite(front_in2, fl == -1 ? HIGH : LOW);
+  digitalWrite(front_in3, fr == 1 ? HIGH : LOW);
+  digitalWrite(front_in4, fr == -1 ? HIGH : LOW);
+  digitalWrite(back_in1, bl == 1 ? HIGH : LOW);
+  digitalWrite(back_in2, bl == -1 ? HIGH : LOW);
+  digitalWrite(back_in3, br == 1 ? HIGH : LOW);
+  digitalWrite(back_in4, br == -1 ? HIGH : LOW);
+}
+
+void stopMotors() {
+  setDirections(0, 0, 0, 0);
+  setSpeed(0);
+}

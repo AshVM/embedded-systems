@@ -1,0 +1,54 @@
+// HC-05 Master
+// Sends joystick values to slave
+
+void setup() {
+  // Left joystick
+  pinMode(A0, INPUT);
+  pinMode(A1, INPUT);
+  pinMode(2, INPUT_PULLUP);
+
+  // Right joystick
+  pinMode(A2, INPUT);
+  pinMode(A3, INPUT);
+  pinMode(3, INPUT_PULLUP);
+
+  Serial.begin(9600);      // USB Serial Monitor
+  Serial1.begin(9600);     // HC-05
+
+  Serial.println("Controller Initialized");
+}
+
+void loop() {
+
+  int LX  = analogRead(A0);
+  int LY  = analogRead(A1);
+  int LSW = digitalRead(2);
+
+  int RX  = analogRead(A2);
+  int RY  = analogRead(A3);
+  int RSW = digitalRead(3);
+
+  // Send one packet
+  Serial1.print(LX);
+  Serial1.print(",");
+  Serial1.print(LY);
+  Serial1.print(",");
+  Serial1.print(LSW);
+  Serial1.print(",");
+  Serial1.print(RX);
+  Serial1.print(",");
+  Serial1.print(RY);
+  Serial1.print(",");
+  Serial1.println(RSW);
+
+  // Optional USB debug
+  Serial.print("TX: ");
+  Serial.print(LX); Serial.print(",");
+  Serial.print(LY); Serial.print(",");
+  Serial.print(LSW); Serial.print(",");
+  Serial.print(RX); Serial.print(",");
+  Serial.print(RY); Serial.print(",");
+  Serial.println(RSW);
+
+  delay(2000);   
+  }

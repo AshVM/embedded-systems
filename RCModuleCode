@@ -1,0 +1,62 @@
+// HC-05 Slave Receiver
+// Arduino Nano Every
+
+String incoming = "";
+
+int LX, LY, LSW;
+int RX, RY, RSW;
+
+void setup() {
+
+  Serial.begin(9600);      // USB Serial Monitor
+  Serial1.begin(9600);     // HC-05
+
+  Serial.println("Bluetooth Receiver Ready");
+}
+
+void loop() {
+
+  while (Serial1.available()) {
+
+    char c = Serial1.read();
+
+    if (c == '\n') {
+
+      int parsed = sscanf(incoming.c_str(),
+                          "%d,%d,%d,%d,%d,%d",
+                          &LX,
+                          &LY,
+                          &LSW,
+                          &RX,
+                          &RY,
+                          &RSW);
+
+      if (parsed == 6) {
+
+        Serial.println("----------------------");
+        Serial.print("Left X : ");
+        Serial.println(LX);
+
+        Serial.print("Left Y : ");
+        Serial.println(LY);
+
+        Serial.print("Left SW: ");
+        Serial.println(LSW);
+
+        Serial.print("Right X: ");
+        Serial.println(RX);
+
+        Serial.print("Right Y: ");
+        Serial.println(RY);
+
+        Serial.print("Right SW:");
+        Serial.println(RSW);
+      }
+
+      incoming = "";
+    }
+    else if (c != '\r') {
+      incoming += c;
+    }
+  }
+}

@@ -1,0 +1,65 @@
+const int JOY_X = A0;
+const int JOY_Y = A1;
+const int BUTTON_PIN = 2;
+
+const int CENTER   = 511;
+const int DEADZONE = 100;   // ignore small wiggles around center
+
+enum { STOP = 0, FORWARD = 1, BACKWARD = 2, LEFT = 3, RIGHT = 4 };
+
+const byte START = 0xFF;
+const unsigned long SEND_INTERVAL = 50;  // ms  -> 20 packets/sec
+unsigned long lastSend = 0;
+
+void setup() {
+  pinMode(BUTTON_PIN, INPUT_PULLUP);
+  Serial1.begin(9600);   // to HC-05
+  Serial.begin(9600);    // USB debug
+}
+
+void loop() {
+  if (millis() - lastSend < SEND_INTERVAL) return;
+  lastSend = millis();
+
+  int xVal = analogRead(JOY_X);
+  int yVal = analogRead(JOY_Y);
+  byte btn = (digitalRead(BUTTON_PIN) == LOW) ? 1 : 0;
+
+  int dx = xVal - CENTER;
+  int dy = yVal - CENTER;
+  int adx = abs(dx);
+  int ady = abs(dy);
+
+  byte dir = STOP;
+  int magnitude = 0;
+
+  if (adx < DEADZONE && ady < DEADZONE) {
+    dir = STOP;                              // inside deadzone -> stopped
+  } else if (ady >= adx) {                   // vertical axis dominates
+    dir = (dy > 0) ? FORWARD : BACKWARD;     // flip if your "up" is reversed
+    magnitude = ady;
+  } else {                                   // horizontal axis dominates
+    dir = (dx > 0) ? RIGHT : LEFT;           // flip if left/right reversed
+    magnitude = adx;
+  }
+
+  byte throttle = 0;
+  if (dir != STOP) {
+    // deflection 0..512  ->  PWM 0..255
+    throttle = map(constrain(magnitude, DEADZONE, 512), DEADZONE, 512, 0, 255);
+  }
+
+  byte checksum = dir ^ throttle ^ btn;
+
+  // --- send the whole packet at once ---
+  Serial1.write(START);
+  Serial1.write(dir);
+  Serial1.write(throttle);
+  Serial1.write(btn);
+  Serial1.write(checksum);
+
+  // --- debug on USB ---
+  Serial.print("dir="); Serial.print(dir);
+  Serial.print(" thr="); Serial.print(throttle);
+  Serial.print(" btn="); Serial.println(btn);
+}
